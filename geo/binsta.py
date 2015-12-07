@@ -3,6 +3,7 @@ import copy
 import itertools
 import urllib2, urllib
 import numpy as np
+from hashlib import md5
 from datetime import datetime
 from time import mktime, sleep
 from geopy.distance import great_circle
@@ -34,9 +35,13 @@ def make_reqstr(params, qtype = 'geo'):
 # Try to fetch a specific geotemporal block of data
 def fetch_block(params):
     try:
+        qid      = md5(json.dumps(params)).hexdigest()
+        
         reqstr   = make_reqstr(params)
         response = urllib2.urlopen(reqstr)
-        return json.loads(response.read())['data'], False
+        data     = json.loads(response.read())['data']
+        _ = map(lambda x: x.update({'binsta' : {'params' : params, 'qid' : qid}}), data)
+        return data, False
     except:
         print 'error fetching block :: %s' % str(params)
         return None, True
