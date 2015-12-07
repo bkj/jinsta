@@ -2,7 +2,10 @@
 # time-example.py
 # scrape all of the posts in a (small) geographic area for a given time
 
+import json
 from binsta import *
+
+config = json.load(open('config.json'))
 
 from elasticsearch import Elasticsearch
 client = Elasticsearch([{'host' : 'localhost', 'port' : 9205}])
@@ -16,7 +19,7 @@ params = {
     'distance'      : 1000, 
     'min_timestamp' : time_to_int(start_time),
     'max_timestamp' : time_to_int(end_time),
-    'client_id'     : 'a2a5406ce7d548489e3e23ce5bee7ffe',
+    'client_id'     : config['client_id'],
     'count'         : 500
 }
 

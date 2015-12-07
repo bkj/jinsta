@@ -41,6 +41,8 @@ def fetch_block(params):
         print 'error fetching block :: %s' % str(params)
         return None, True
 
+# --
+# Functions for scraping over time
 
 # Split an interval in half
 def split_interval(low, high):
@@ -49,7 +51,7 @@ def split_interval(low, high):
 
 
 # Scrape across time
-# TODO : Add callback to save this incrementally
+# TODO : Should never request time window larger than N minutes (N = 30, maybe?)
 def scrape_over_time(params, max_images = 20, min_time = -1, callbacks = False, depth = 0):
     prefix = ''.join(['\t' for _ in range(depth)])
     sleep(1)

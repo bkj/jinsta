@@ -3,6 +3,9 @@
 # Scrape all of the posts in a (large) geographic area for a given time
 
 from binsta import *
+import json
+
+config = json.load(open('config.json'))
 
 start_time = datetime.strptime('2015-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 end_time   = datetime.strptime('2015-01-01 00:10:00', '%Y-%m-%d %H:%M:%S')
@@ -16,7 +19,7 @@ params = {
     'distance'      : 500, 
     'min_timestamp' : time_to_int(start_time),
     'max_timestamp' : time_to_int(end_time),
-    'client_id'     : 'a2a5406ce7d548489e3e23ce5bee7ffe',
+    'client_id'     : config['client_id'],
     'count'         : 500
 }
 
@@ -29,5 +32,4 @@ for c in centers:
     print '\n [lat, lng]:: ' + str(c)
     params['lat'] = c[0]
     params['lng'] = c[1]
-    data[str(c)] = scrape_over_time(params)
-
+    data[str(c)]  = scrape_over_time(params)
