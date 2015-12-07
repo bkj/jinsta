@@ -251,7 +251,7 @@ while realtime:
     realtime = False
   else:
     start_date = end_date
-    end_date = datetime(datetime.now().year,datetime.now().month,datetime.now().day,datetime.now().hour,datetime.now().minute)
+    end_date   = datetime(datetime.now().year,datetime.now().month,datetime.now().day,datetime.now().hour,datetime.now().minute)
   
     if (end_date - start_date).seconds < 300:
       start_date = end_date - timedelta(seconds=300)

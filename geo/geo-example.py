@@ -10,12 +10,9 @@ config = json.load(open('config.json'))
 start_time = datetime.strptime('2015-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 end_time   = datetime.strptime('2015-01-01 00:10:00', '%Y-%m-%d %H:%M:%S')
 
-min_lat = -74.02133
-max_lat = -73.96863
-min_lon = 40.700748
-max_lon = 40.746412
-
 params = {
+    'lat' : { 'min' : -74.02133, 'max' : -73.96863 },
+    'lon' : { 'min' : 40.700748, 'max' : 40.746412 },
     'distance'      : 500, 
     'min_timestamp' : time_to_int(start_time),
     'max_timestamp' : time_to_int(end_time),
@@ -23,13 +20,7 @@ params = {
     'count'         : 500
 }
 
-center  = (max_lat - min_lat) / 2, (max_lon - min_lon) / 2
-r       = meters2latlon(params['distance'], center[0], center[1])[0]
-centers = circle_cover(min_lat, max_lat, min_lon, max_lon, r)
+data = scrape_over_geo(params)
 
-data = {}
-for c in centers:
-    print '\n [lat, lng]:: ' + str(c)
-    params['lat'] = c[0]
-    params['lng'] = c[1]
-    data[str(c)]  = scrape_over_time(params)
+
+time_to_int(datetime.now())

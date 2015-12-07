@@ -44,31 +44,68 @@ def fetch_block(params):
 # --
 # Functions for scraping over time
 
+# NB : Prospective scrapes will/should never terminate, so you need to use
+# a callback
+
+def pprint_params(params):
+    return '%s | %s | (%f, %f)' % (
+        datetime.utcfromtimestamp(params['min_timestamp']).strftime('%Y-%m-%d %H:%M:%S'),
+        datetime.utcfromtimestamp(params['max_timestamp']).strftime('%Y-%m-%d %H:%M:%S'),
+        params['lat'],
+        params['lng']
+    )
+
 # Split an interval in half
 def split_interval(low, high):
     mid = float(low + high) / 2
     return (low, mid), (mid, high), high - mid
 
+# This should sleep (for a couple of minutes) if there's too much overlap.
+# Don't need to waste requests scraping the same period over and over again
+#
+# What should time_margin be?
+def step_forward(params, time_margin = 60 * 4):
+    params = copy.copy(params)
+    
+    # Take a timestep forward
+    old_maxtimestamp = params['max_timestamp']
+    now              = time_to_int(datetime.now())
+    
+    params['max_timestamp'] = now
+    params['min_timestamp'] = min(old_maxtimestamp, now - time_margin)
+    
+    return params
+
 
 # Scrape across time
+
 # TODO : Should never request time window larger than N minutes (N = 30, maybe?)
-def scrape_over_time(params, max_images = 20, min_time = -1, callbacks = False, depth = 0):
+MIN_TIME   = 60 # Don't make requests smaller than a minute
+MAX_IMAGES = 99 # If we get more than 99 hits, need to split
+
+def scrape_over_time(params, prospective = False, callbacks = False, depth = 0):
+    
+    if prospective and (depth == 0):
+        print bcolors.WARNING + '! convert max_timestamp -> current time' + bcolors.ENDC
+        params['max_timestamp'] = time_to_int(datetime.now())
+    
     prefix = ''.join(['\t' for _ in range(depth)])
     sleep(1)
-    print bcolors.OKBLUE + prefix + 'scraping :: %s' % str(params) + bcolors.ENDC
+    print bcolors.OKBLUE + prefix + pprint_params(params) + bcolors.ENDC
     
     data, err = fetch_block(params)
     
     if not err:
         print bcolors.OKGREEN + prefix + '$ %d hits' % len(data) + bcolors.ENDC
         
-        if len(data) > max_images:
+        if len(data) > MAX_IMAGES:
             
             int1, int2, diff = split_interval(params['min_timestamp'], params['max_timestamp'])
             
-            if diff < min_time:
+            if diff < MIN_TIME:
                 print bcolors.WARNING + prefix + '! below min time increment' + bcolors.ENDC
-                return data
+                out = data
+                
             else:
                 print bcolors.WARNING + prefix + '! splitting' + bcolors.ENDC
                 
@@ -85,21 +122,61 @@ def scrape_over_time(params, max_images = 20, min_time = -1, callbacks = False, 
                 data1 = scrape_over_time(p1, callbacks = callbacks, depth = depth + 1)
                 data2 = scrape_over_time(p2, callbacks = callbacks, depth = depth + 1)
                 
-                # TODO : Maybe also return data, since API is sortof nondeterministic
-                return data1 + data2
-        
+                # TODO : Maybe also return data, since API is (sortof) nondeterministic
+                out = data1 + data2
+                if len(data) != len(out):
+                    print bcolors.FAIL + prefix + '* %d < %d (size violation)' % (len(data), len(out))  + bcolors.ENDC
         else:
+            # Add request parameters to the objects that get returned
+            _ = map(lambda x: x.update({'req_params' : params}), data)
+            
             # do callback iff we get a satisfactory time slice
             if callbacks:
                 [callback(data, params) for callback in callbacks]
             
             print bcolors.OKGREEN + prefix + '+ return' + bcolors.ENDC
-            return data
+            out = data
         
     else:
         print bcolors.FAIL + 'error at scrape time :: %s' % str(params) + bcolors.ENDC
         # Do we want to move on to the next time slice completely?
-        return []
+        out = []
+    
+    if prospective and (depth == 0):
+        print bcolors.FAIL + '-> stepping forward' + bcolors.ENDC
+        _ = scrape_over_time(step_forward(params), prospective = True, callbacks = callbacks, depth = 0)
+    else:
+        return out
+
+
+def scrape_over_geo(params, prospective = False, callbacks = False):
+    
+    center = (
+        (params['lat']['max'] - params['lat']['min']) / 2,
+        (params['lon']['max'] - params['lon']['max']) / 2
+    )
+    
+    r = meters2latlon(params['distance'], center[0], center[1])[0]
+    
+    centers = circle_cover(
+        params['lat']['min'],
+        params['lat']['max'],
+        params['lon']['min'],
+        params['lon']['max'], 
+        r
+    )
+    
+    data = {}
+    for c in centers:
+        print '\n [lat, lng]:: ' + str(c)
+        params['lat'] = c[0]
+        params['lng'] = c[1]
+        data[str(c)]  = scrape_over_time(params, callbacks = callbacks, prospective = False)
+    
+    if prospective:
+        _ = scrape_over_geo(step_forward(params), callbacks = callbacks, prospective = True)
+    else:
+        return data
 
 
 # Conver a time object to an integer
@@ -170,7 +247,7 @@ def log_to_print(data, params):
 
 
 def log_to_disk(data, params):
-    file_name = '%f_%f_%d_%d.bulk' % (params['lat'], params['lng'], params['min_timestamp'], params['max_timestamp'])
+    file_name = 'data/%f_%f_%d_%d_bulkjson.txt' % (params['lat'], params['lng'], params['min_timestamp'], params['max_timestamp'])
     try:
         json.dump(data, open(file_name, "w"))
         return True
