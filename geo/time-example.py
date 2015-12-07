@@ -1,3 +1,7 @@
+# --
+# time-example.py
+# scrape all of the posts in a (small) geographic area for a given time
+
 from binsta import *
 
 from elasticsearch import Elasticsearch

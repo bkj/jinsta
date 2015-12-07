@@ -1,5 +1,8 @@
+# --
+# geo-example.py
+# Scrape all of the posts in a (large) geographic area for a given time
 
-
+from binsta import *
 
 start_time = datetime.strptime('2015-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 end_time   = datetime.strptime('2015-01-01 00:10:00', '%Y-%m-%d %H:%M:%S')
